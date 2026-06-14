@@ -1,0 +1,390 @@
+<!-- © 2026 Roderick Grimes. All rights reserved. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>St. Louis City Watch — MLS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#d80c2d; --primary-deep:#9e0a20; --primary-bright:#ff2d4a;
+    --gold:#f2c53d; --gold-dim:#c79a3a;
+    --bg:#120508; --bg-2:#1b0a0e; --panel:#200d12; --panel-2:#291016;
+    --line:rgba(242,197,61,.20); --line-soft:rgba(242,197,61,.09);
+    --ink:#f7eef0; --muted:#c6a6ab; --muted-2:#8f6f76;
+    --red:#ff8478; --green:#6ee0a3;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:'Barlow',system-ui,sans-serif;min-height:100dvh;
+    background-image:radial-gradient(120% 70% at 50% -10%,rgba(216,12,45,.16),transparent 60%);}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 16px 40px}
+  a{color:inherit;text-decoration:none}
+
+  .ticker{background:var(--primary-deep);border-bottom:1px solid var(--line-soft);overflow:hidden;white-space:nowrap}
+  .track{display:inline-block;padding:8px 0;font-family:'Barlow Condensed';letter-spacing:.5px;font-size:14px;animation:scroll 50s linear infinite}
+  .track span{margin:0 18px;color:var(--ink)}
+  .track b{color:var(--gold)} .track .lv{color:#fff;font-weight:700;background:rgba(255,255,255,.18);padding:1px 6px;border-radius:3px}
+  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @media (prefers-reduced-motion:reduce){.track{animation:none}}
+
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:22px 0 14px}
+  .brand h1{font-family:'Oswald';font-weight:700;letter-spacing:2px;text-transform:uppercase;font-size:clamp(24px,5vw,38px);line-height:.95}
+  .brand h1 .y{color:var(--gold)}
+  .brand .sub{font-family:'Barlow Condensed';letter-spacing:3px;text-transform:uppercase;color:var(--muted-2);font-size:12px;margin-top:6px}
+  .upd{font-family:'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;color:var(--muted-2);font-size:12px}
+
+  .hero{background:linear-gradient(135deg,var(--primary),var(--primary-deep));border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin-bottom:16px;position:relative;overflow:hidden}
+  .hero::after{content:"";position:absolute;right:-40px;top:-40px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(242,197,61,.18),transparent 70%)}
+  .hero-top{display:flex;justify-content:space-between;align-items:center}
+  .hero .lbl{font-family:'Oswald';font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-size:14px}
+  .hero .rec{font-family:'Barlow Condensed';letter-spacing:1px;color:rgba(255,255,255,.8);font-size:13px;text-transform:uppercase}
+  .hero .when{font-family:'Barlow Condensed';letter-spacing:1px;font-size:15px;margin:14px 0 4px;text-transform:uppercase}
+  .hero .vs{font-family:'Oswald';font-weight:700;font-size:clamp(22px,4vw,30px);letter-spacing:1px}
+  .hero .vs img{width:30px;height:20px;object-fit:cover;vertical-align:middle;border-radius:2px;margin-right:7px;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+  .hero .meta{font-family:'Barlow Condensed';letter-spacing:1px;color:rgba(255,255,255,.75);font-size:13px;margin-top:4px;text-transform:uppercase}
+  .count{display:flex;gap:14px;margin-top:16px;flex-wrap:wrap}
+  .unit{background:rgba(18,5,8,.5);border:1px solid var(--line-soft);border-radius:10px;padding:8px 14px;text-align:center;min-width:62px}
+  .unit .n{font-family:'Oswald';font-weight:700;font-size:24px;color:var(--gold);font-variant-numeric:tabular-nums}
+  .unit .u{font-family:'Barlow Condensed';letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.7);font-size:10px}
+  .live-badge{display:inline-block;background:#fff;color:var(--primary-deep);font-family:'Oswald';font-weight:700;letter-spacing:1px;font-size:12px;padding:3px 10px;border-radius:5px;text-transform:uppercase}
+
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .panel{grid-column:span 12;background:var(--panel);border:1px solid var(--line-soft);border-radius:14px;overflow:hidden}
+  @media(min-width:780px){.col-8{grid-column:span 8}.col-6{grid-column:span 6}.col-4{grid-column:span 4}}
+  .p-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line-soft)}
+  .p-head .bar{width:4px;height:20px;background:var(--gold);border-radius:2px}
+  .p-head h2{font-family:'Oswald';font-weight:600;letter-spacing:1.5px;text-transform:uppercase;font-size:16px;flex:1}
+  .p-head .ct{font-family:'Barlow Condensed';letter-spacing:1px;color:var(--muted-2);font-size:12px;text-transform:uppercase}
+  .p-body{padding:14px 16px}
+  .p-body.scroll{max-height:430px;overflow-y:auto}
+  .p-body.scroll::-webkit-scrollbar{width:7px}.p-body.scroll::-webkit-scrollbar-thumb{background:var(--primary-bright);border-radius:6px}
+  .loading,.err,.empty{font-family:'Barlow Condensed';letter-spacing:.5px;color:var(--muted-2);font-size:14px;padding:8px 0}
+  .err{color:var(--red)}
+
+  .mr{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:14px}
+  .mr:last-child{border:none}
+  .mr .dt{font-family:'Barlow Condensed';letter-spacing:.5px;color:var(--muted-2);font-size:12px;min-width:66px;text-transform:uppercase}
+  .mr .tm{display:flex;align-items:center;gap:7px;flex:1;font-weight:600}
+  .mr .tm img{width:20px;height:14px;object-fit:contain}
+  .mr .sc{font-family:'Oswald';font-weight:700;color:var(--gold);min-width:46px;text-align:center}
+  .mr .st{font-family:'Barlow Condensed';letter-spacing:.5px;color:var(--muted-2);font-size:11px;text-transform:uppercase;min-width:54px;text-align:right}
+  .mr .st.live{color:var(--red);font-weight:700}
+  .mr.me{background:rgba(242,197,61,.05);margin:0 -16px;padding:9px 16px}
+  .res{font-family:'Oswald';font-weight:700;font-size:11px;width:18px;height:18px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#fff}
+  .res.W{background:#2e9e63}.res.L{background:#c23b3b}.res.D{background:#8a8170}
+
+  .grp h3{font-family:'Oswald';font-weight:600;letter-spacing:1.5px;text-transform:uppercase;font-size:13px;color:var(--gold);margin-bottom:6px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-family:'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;color:var(--muted-2);font-size:11px;text-align:right;padding:4px 5px;font-weight:600}
+  th.tnm,td.tnm{text-align:left}
+  td{padding:6px 5px;text-align:right;border-top:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
+  td.tnm{display:flex;align-items:center;gap:7px;font-weight:600}
+  td.tnm img{width:18px;height:18px;object-fit:contain}
+  tr.me td{background:rgba(242,197,61,.07)}
+  td .pts{font-family:'Oswald';font-weight:700;color:var(--gold)}
+  .cut td{border-top:2px solid var(--primary-bright)}
+
+  .squad{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .pl{display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:8px}
+  .pl .no{font-family:'Oswald';font-weight:700;color:var(--gold);min-width:22px;text-align:center}
+  .pl .pn{font-weight:600;font-size:13.5px;line-height:1.1}
+  .pl .pp{font-family:'Barlow Condensed';letter-spacing:.5px;color:var(--muted-2);font-size:11px;text-transform:uppercase}
+
+  .news a{display:block;padding:10px 0;border-bottom:1px solid var(--line-soft)}
+  .news a:last-child{border:none}
+  .news .hd{font-weight:600;font-size:14px;line-height:1.35}
+  .news .tm{font-family:'Barlow Condensed';letter-spacing:.5px;color:var(--muted-2);font-size:11px;text-transform:uppercase;margin-top:3px}
+  .news a:hover .hd{color:var(--gold)}
+
+  .launch{position:fixed;right:20px;z-index:40;display:flex;align-items:center;gap:9px;font-family:'Oswald';font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:13px;border-radius:50px;padding:13px 20px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.5);transition:transform .15s,background .15s,color .15s;border:1px solid var(--gold)}
+  .mc-launch{bottom:20px;background:linear-gradient(160deg,var(--gold),var(--gold-dim));color:var(--primary-deep);border:none}
+  .mc-launch:hover{transform:translateY(-2px)}
+  .bet-launch{bottom:80px;background:var(--bg-2);color:var(--gold)}
+  .bet-launch:hover{transform:translateY(-2px);background:var(--gold);color:var(--bg)}
+  .launch .ic{font-size:16px}
+  .scrim{position:fixed;inset:0;background:rgba(8,3,4,.66);backdrop-filter:blur(3px);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
+  .scrim.open{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:min(420px,92vw);z-index:60;transform:translateX(102%);
+    background:linear-gradient(180deg,var(--bg-2),var(--bg));border-left:1px solid var(--line);box-shadow:-20px 0 60px rgba(0,0,0,.6);
+    transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+  .drawer.open{transform:translateX(0)}
+  .drawer-hd{display:flex;align-items:center;gap:12px;padding:18px 20px;background:linear-gradient(90deg,var(--primary),var(--primary-deep));border-bottom:1px solid var(--line)}
+  .drawer-hd .bar{width:4px;height:24px;background:var(--gold);border-radius:2px}
+  .drawer-hd h2{font-family:'Oswald';font-weight:700;letter-spacing:2px;font-size:19px;text-transform:uppercase;flex:1}
+  .drawer-hd button{background:none;border:1px solid var(--line);color:var(--gold);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:18px}
+  .drawer-hd button:hover{background:var(--gold);color:var(--primary-deep)}
+  .drawer-body{padding:18px 20px;overflow-y:auto;flex:1}
+  .src{margin-bottom:22px}
+  .src-hd{margin-bottom:10px}
+  .src-hd .nm{font-family:'Oswald';font-weight:600;letter-spacing:1.5px;text-transform:uppercase;font-size:15px;color:var(--gold)}
+  .src-hd .tag{font-family:'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;font-size:11px;color:var(--muted-2);margin-left:8px}
+  .links{display:flex;flex-direction:column;gap:8px}
+  .links a{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--panel);border:1px solid var(--line-soft);border-radius:8px;font-weight:500;font-size:14.5px;transition:all .15s}
+  .links a:hover{border-color:var(--line);background:var(--panel-2);color:var(--gold);transform:translateX(3px)}
+  .links a.feat{border-color:var(--gold);color:var(--gold)}
+  .links a .ar{margin-left:auto;color:var(--muted-2)}
+  .drawer-note{font-family:'Barlow Condensed';letter-spacing:.4px;color:var(--muted-2);font-size:12.5px;line-height:1.5;border-top:1px solid var(--line-soft);padding-top:14px}
+  .drawer-note .g{color:var(--gold-dim)}
+
+  footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line-soft);text-align:center;
+    font-family:'Barlow Condensed';letter-spacing:1.5px;text-transform:uppercase;color:var(--muted-2);font-size:12px}
+</style>
+</head>
+<body>
+
+<div class="ticker"><div class="track" id="ticker"><span>Loading St. Louis City SC…</span></div></div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>St. Louis City <span class="y">Watch</span></h1>
+      <div class="sub">MLS · CITYPARK · Western Conference</div>
+    </div>
+    <div class="upd" id="updated">Syncing…</div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-top"><div class="lbl" id="heroLbl">Next Up</div><div class="rec" id="heroRec">—</div></div>
+    <div class="when" id="heroWhen">—</div>
+    <div class="vs" id="heroVs">Loading schedule…</div>
+    <div class="meta" id="heroMeta"></div>
+    <div class="count" id="countdown"></div>
+  </section>
+
+  <div class="grid">
+    <section class="panel col-8">
+      <div class="p-head"><span class="bar"></span><h2>Fixtures &amp; Results</h2><span class="ct" id="fxCt"></span></div>
+      <div class="p-body scroll" id="fixtures"><div class="loading">Pulling the schedule…</div></div>
+    </section>
+    <section class="panel col-4">
+      <div class="p-head"><span class="bar"></span><h2>Western Conference</h2></div>
+      <div class="p-body scroll" id="standings"><div class="loading">Loading table…</div></div>
+    </section>
+    <section class="panel col-6">
+      <div class="p-head"><span class="bar"></span><h2>Squad</h2><span class="ct" id="sqCt"></span></div>
+      <div class="p-body scroll" id="squad"><div class="loading">Loading roster…</div></div>
+    </section>
+    <section class="panel col-6">
+      <div class="p-head"><span class="bar"></span><h2>Club Headlines</h2></div>
+      <div class="p-body scroll news" id="news"><div class="loading">Loading headlines…</div></div>
+    </section>
+  </div>
+
+  <footer>© 2026 R. Grimes · All rights reserved</footer>
+</div>
+
+<button class="launch bet-launch" id="betOpen"><span class="ic">💰</span> Betting</button>
+<button class="launch mc-launch" id="mcOpen"><span class="ic">⚽</span> Match Center</button>
+<div class="scrim" id="scrim"></div>
+
+<aside class="drawer" id="mcDrawer" aria-hidden="true">
+  <div class="drawer-hd"><span class="bar"></span><h2>Match Center</h2><button id="mcClose" aria-label="Close">✕</button></div>
+  <div class="drawer-body">
+    <div class="src"><div class="src-hd"><span class="nm">Official</span><span class="tag">Club · League</span></div>
+      <div class="links">
+        <a href="https://www.stlcitysc.com/" target="_blank" rel="noopener">St. Louis City SC — Official <span class="ar">↗</span></a>
+        <a href="https://www.mlssoccer.com/clubs/st-louis-city-sc/" target="_blank" rel="noopener">MLSsoccer.com — Club Page <span class="ar">↗</span></a>
+      </div>
+    </div>
+    <div class="src"><div class="src-hd"><span class="nm">Stats &amp; Analysis</span><span class="tag">Deep dives</span></div>
+      <div class="links">
+        <a href="https://www.espn.com/soccer/team/_/name/st-louis-city-sc" target="_blank" rel="noopener">ESPN — Team Page <span class="ar">↗</span></a>
+        <a href="https://fbref.com/en/squads/" target="_blank" rel="noopener">FBref — Squad Stats <span class="ar">↗</span></a>
+        <a href="https://www.americansocceranalysis.com/" target="_blank" rel="noopener">American Soccer Analysis <span class="ar">↗</span></a>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<aside class="drawer" id="betDrawer" aria-hidden="true">
+  <div class="drawer-hd"><span class="bar"></span><h2>Betting</h2><button id="betClose" aria-label="Close">✕</button></div>
+  <div class="drawer-body">
+    <div class="src"><div class="src-hd"><span class="nm">Sportsbooks</span><span class="tag">Place your bets</span></div>
+      <div class="links">
+        <a class="feat" href="https://sportsbook.fanduel.com" target="_blank" rel="noopener">FanDuel <span class="ar">↗</span></a>
+        <a href="https://sportsbook.draftkings.com" target="_blank" rel="noopener">DraftKings <span class="ar">↗</span></a>
+        <a href="https://espnbet.com" target="_blank" rel="noopener">ESPN BET <span class="ar">↗</span></a>
+        <a href="https://sports.betmgm.com" target="_blank" rel="noopener">BetMGM <span class="ar">↗</span></a>
+        <a href="https://www.caesars.com/sportsbook-and-casino" target="_blank" rel="noopener">Caesars <span class="ar">↗</span></a>
+        <a href="https://www.bet365.com" target="_blank" rel="noopener">bet365 <span class="ar">↗</span></a>
+      </div>
+    </div>
+    <div class="src"><div class="src-hd"><span class="nm">Odds &amp; Lines</span><span class="tag">MLS · Soccer</span></div>
+      <div class="links">
+        <a href="https://www.vegasinsider.com/soccer/odds/" target="_blank" rel="noopener">VegasInsider — Soccer Lines <span class="ar">↗</span></a>
+        <a href="https://www.oddsshark.com/soccer/odds" target="_blank" rel="noopener">OddsShark — Soccer Odds <span class="ar">↗</span></a>
+        <a href="https://www.actionnetwork.com/soccer/odds" target="_blank" rel="noopener">Action Network — Soccer <span class="ar">↗</span></a>
+      </div>
+    </div>
+    <div class="drawer-note">Must be <span class="g">21+</span> and physically located where betting is legal. If you or someone you know has a gambling problem, call <span class="g">1-800-GAMBLER</span>.</div>
+  </div>
+</aside>
+
+<script>
+const SITE="https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1";
+const STAND="https://site.api.espn.com/apis/v2/sports/soccer/usa.1/standings";
+const NAME_RE=/st\.?\s*louis/i;
+const $=id=>document.getElementById(id);
+let TEAM=null, EVENTS=[], heroTarget=null;
+
+async function getJSON(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error(r.status);return r.json();}
+const isCity=t=>!!t&&(NAME_RE.test(t.displayName||"")||(t.abbreviation||"")==="STL");
+function relTime(d){const s=(Date.now()-new Date(d).getTime())/1000;if(s<0)return "soon";if(s<3600)return Math.max(1,Math.floor(s/60))+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return Math.floor(s/86400)+"d ago";}
+function dayKey(d){return new Date(d).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});}
+function scoreOf(c){if(c==null)return"";if(typeof c==="object")return c.displayValue!=null?c.displayValue:(c.value!=null?c.value:"");return c;}
+
+async function discoverTeam(){
+  try{
+    const d=await getJSON(`${SITE}/teams`);
+    const list=(((d.sports||[])[0]||{}).leagues||[])[0]?.teams||[];
+    const found=list.map(x=>x.team).find(t=>isCity(t));
+    if(found)TEAM=found;
+  }catch(e){}
+}
+
+function parseEv(ev){
+  const c=(ev.competitions&&ev.competitions[0])||{};
+  const cs=c.competitors||[];
+  const home=cs.find(x=>x.homeAway==="home")||cs[0]||{};
+  const away=cs.find(x=>x.homeAway==="away")||cs[1]||{};
+  const stt=((c.status&&c.status.type)||(ev.status&&ev.status.type))||{};
+  return {date:ev.date,state:stt.state||"pre",completed:!!stt.completed,detail:stt.shortDetail||stt.detail||"",
+    home:home.team||{},away:away.team||{},hs:scoreOf(home.score),as:scoreOf(away.score),
+    homeWin:!!home.winner,awayWin:!!away.winner};
+}
+function teamCell(t){const lg=t&&t.logo?`<img src="${t.logo}" alt="">`:"";return lg+((t&&(t.abbreviation||t.shortDisplayName||t.displayName))||"TBD");}
+
+async function loadSchedule(){
+  try{
+    if(!TEAM)await discoverTeam();
+    let evs=[];
+    if(TEAM&&TEAM.id){const d=await getJSON(`${SITE}/teams/${TEAM.id}/schedule`);evs=(d.events||[]).map(parseEv);}
+    if(!evs.length){ // fallback: season scoreboard filtered
+      const d=await getJSON(`${SITE}/scoreboard?limit=400&dates=20260221-20261115`);
+      evs=(d.events||[]).map(parseEv).filter(e=>isCity(e.home)||isCity(e.away));
+    }
+    EVENTS=evs.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    renderTicker();renderHero();renderFixtures();
+  }catch(e){$("heroVs").textContent="Live data unavailable";$("fixtures").innerHTML='<div class="err">Schedule unavailable — try a refresh.</div>';}
+}
+
+function cityResult(e){ // W/L/D from City's perspective
+  if(!e.completed)return null;
+  const hc=isCity(e.home),h=+e.hs,a=+e.as;if(isNaN(h)||isNaN(a))return null;
+  if(h===a)return"D";const cityHome=hc?h:a,opp=hc?a:h;return cityHome>opp?"W":"L";
+}
+
+function renderTicker(){
+  const done=EVENTS.filter(e=>e.completed||e.state==="in").slice(-12);
+  if(!done.length){$("ticker").innerHTML="<span>No matches reported yet.</span>";return;}
+  const html=done.map(e=>{const live=e.state==="in"?'<span class="lv">LIVE</span> ':"";
+    return `<span>${live}<b>${e.home.abbreviation||"?"}</b> ${e.hs}-${e.as} <b>${e.away.abbreviation||"?"}</b></span>`;}).join("");
+  $("ticker").innerHTML=html+html;
+}
+
+function setHero(lbl,rec,when,vs,meta,target){
+  $("heroLbl").textContent=lbl;$("heroRec").textContent=rec||"";
+  $("heroWhen").textContent=when||"";$("heroVs").innerHTML=vs||"";$("heroMeta").textContent=meta||"";
+  heroTarget=target||null;tickCountdown();
+}
+function renderHero(){
+  const now=Date.now();
+  const live=EVENTS.find(e=>e.state==="in");
+  const next=EVENTS.find(e=>e.state==="pre"&&new Date(e.date).getTime()>now-3600000);
+  const last=[...EVENTS].reverse().find(e=>e.completed);
+  if(live){setHero("Live Now",'<span class="live-badge">Live</span>',live.detail,
+    `${teamCell(live.home)} ${live.hs}–${live.as} ${teamCell(live.away)}`,"",null);}
+  else if(next){setHero("Next Match","",
+    new Date(next.date).toLocaleString(undefined,{weekday:"long",month:"long",day:"numeric",hour:"numeric",minute:"2-digit"}),
+    `${teamCell(next.home)} vs ${teamCell(next.away)}`,isCity(next.home)?"Home · CITYPARK":"Away",new Date(next.date));}
+  else if(last){setHero("Latest Result","",relTime(last.date),
+    `${teamCell(last.home)} ${last.hs}–${last.as} ${teamCell(last.away)}`,"",null);}
+  else setHero("St. Louis City SC","","","Schedule loading…","",null);
+}
+
+function renderFixtures(){
+  if(!EVENTS.length){$("fixtures").innerHTML='<div class="empty">No fixtures found.</div>';return;}
+  const rec=EVENTS.filter(e=>e.completed).map(cityResult).filter(Boolean);
+  $("fxCt").textContent=rec.length?`${rec.filter(r=>r==="W").length}-${rec.filter(r=>r==="D").length}-${rec.filter(r=>r==="L").length} W-D-L`:"";
+  $("fixtures").innerHTML=EVENTS.map(e=>{
+    const r=cityResult(e);const badge=r?`<span class="res ${r}">${r}</span>`:"";
+    const sc=e.completed||e.state==="in"?`<span class="sc">${e.hs}–${e.as}</span>`:'<span class="sc">vs</span>';
+    const st=e.state==="in"?`<span class="st live">LIVE</span>`:e.completed?`<span class="st">FT</span>`:`<span class="st">${new Date(e.date).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}</span>`;
+    return `<div class="mr me"><span class="dt">${dayKey(e.date)}</span>${badge}<span class="tm">${teamCell(e.home)}</span>${sc}<span class="tm" style="justify-content:flex-end">${teamCell(e.away)}</span>${st}</div>`;
+  }).join("");
+}
+
+function statOf(en,keys){const arr=en.stats||[];for(const k of keys){const s=arr.find(x=>x.name===k||x.type===k||x.abbreviation===k);if(s)return s.displayValue!=null?s.displayValue:s.value;}return"";}
+async function loadStandings(){
+  try{
+    const d=await getJSON(STAND);
+    const confs=d.children||[];
+    let conf=confs.find(c=>/west/i.test(c.name||c.displayName||""));
+    if(!conf){const all=confs.find(c=>((c.standings&&c.standings.entries)||[]).some(en=>isCity(en.team)));conf=all||confs[0];}
+    if(!conf)throw new Error("no conf");
+    const entries=(((conf.standings&&conf.standings.entries)||conf.entries||[])).slice();
+    const _n=v=>{const x=parseFloat(String(v).replace("+",""));return isNaN(x)?-1e9:x;};
+    entries.sort((a,b)=>_n(statOf(b,["points","pts"]))-_n(statOf(a,["points","pts"]))
+      ||_n(statOf(b,["pointDifferential","goalDifference","GD"]))-_n(statOf(a,["pointDifferential","goalDifference","GD"])));
+    const rows=entries.map((en,i)=>{const t=en.team||{};const me=isCity(t)?" me":"";const cut=i===8?" cut":"";
+      return `<tr class="${me.trim()} ${cut.trim()}"><td class="tnm">${i+1} ${teamCell(t)}</td>`
+        +`<td>${statOf(en,["gamesPlayed","GP"])}</td><td>${statOf(en,["points","pts"])&&""}${statOf(en,["wins"])}-${statOf(en,["ties","draws"])}-${statOf(en,["losses"])}</td>`
+        +`<td>${statOf(en,["pointDifferential","goalDifference","GD"])}</td><td class="pts">${statOf(en,["points","pts"])}</td></tr>`;}).join("");
+    $("standings").innerHTML=`<div class="grp"><table><tr><th class="tnm">${conf.name||"Western"}</th><th>P</th><th>W-D-L</th><th>GD</th><th>Pts</th></tr>${rows}</table>`
+      +`<div style="font-family:'Barlow Condensed';color:var(--muted-2);font-size:11px;letter-spacing:.5px;text-transform:uppercase;margin-top:8px">Red line = playoff cut (top 9)</div></div>`;
+  }catch(e){$("standings").innerHTML='<div class="err">Standings unavailable right now.</div>';}
+}
+
+async function loadSquad(){
+  try{
+    if(!TEAM)await discoverTeam();
+    if(!TEAM||!TEAM.id){$("squad").innerHTML='<div class="empty">Squad unavailable.</div>';return;}
+    const d=await getJSON(`${SITE}/teams/${TEAM.id}/roster`);
+    let players=[];
+    (d.athletes||[]).forEach(grp=>{if(grp.items)players=players.concat(grp.items);else players.push(grp);});
+    if(!players.length){$("squad").innerHTML='<div class="empty">Roster not posted.</div>';return;}
+    $("sqCt").textContent=players.length+" players";
+    $("squad").innerHTML='<div class="squad">'+players.map(p=>{
+      const no=p.jersey?`<span class="no">${p.jersey}</span>`:'<span class="no">–</span>';
+      const pos=(p.position&&(p.position.abbreviation||p.position.name))||"";
+      return `<div class="pl">${no}<div><div class="pn">${p.displayName||p.fullName||""}</div><div class="pp">${pos}</div></div></div>`;}).join("")+'</div>';
+  }catch(e){$("squad").innerHTML='<div class="err">Roster unavailable.</div>';}
+}
+
+async function loadNews(){
+  try{
+    const d=await getJSON(`${SITE}/news?limit=14`);
+    let arts=(d.articles||[]);
+    arts=arts.slice().sort((a,b)=>{const ka=NAME_RE.test((a.headline||"")+(a.description||""))?0:1;const kb=NAME_RE.test((b.headline||"")+(b.description||""))?0:1;return ka-kb;});
+    if(!arts.length){$("news").innerHTML='<div class="empty">No headlines right now.</div>';return;}
+    $("news").innerHTML=arts.slice(0,12).map(a=>{const u=(a.links&&a.links.web&&a.links.web.href)||"#";const tm=a.published?`<div class="tm">${relTime(a.published)}</div>`:"";
+      return `<a href="${u}" target="_blank" rel="noopener"><div class="hd">${a.headline||""}</div>${tm}</a>`;}).join("");
+  }catch(e){$("news").innerHTML='<div class="err">Headlines unavailable.</div>';}
+}
+
+function tickCountdown(){
+  const el=$("countdown");if(!heroTarget){el.innerHTML="";return;}
+  let s=Math.floor((heroTarget.getTime()-Date.now())/1000);if(s<=0){el.innerHTML="";return;}
+  const d=Math.floor(s/86400);s%=86400;const h=Math.floor(s/3600);s%=3600;const m=Math.floor(s/60);const sec=s%60;
+  const u=(n,l)=>`<div class="unit"><div class="n">${String(n).padStart(2,"0")}</div><div class="u">${l}</div></div>`;
+  el.innerHTML=(d>0?u(d,"Days"):"")+u(h,"Hrs")+u(m,"Min")+u(sec,"Sec");
+}
+
+(function(){
+  const scrim=$("scrim"),bet=$("betDrawer"),mc=$("mcDrawer");
+  function close(){[bet,mc].forEach(x=>{x.classList.remove("open");x.setAttribute("aria-hidden","true");});scrim.classList.remove("open");}
+  function open(el){close();el.classList.add("open");el.setAttribute("aria-hidden","false");scrim.classList.add("open");}
+  $("betOpen").onclick=()=>open(bet);$("mcOpen").onclick=()=>open(mc);
+  $("betClose").onclick=close;$("mcClose").onclick=close;scrim.onclick=close;
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
+})();
+
+function stamp(){$("updated").textContent="Updated "+new Date().toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});}
+async function refreshAll(){await discoverTeam();await Promise.allSettled([loadSchedule(),loadStandings(),loadSquad(),loadNews()]);stamp();}
+refreshAll();setInterval(refreshAll,300000);setInterval(tickCountdown,1000);
+</script>
+</body>
+</html>
