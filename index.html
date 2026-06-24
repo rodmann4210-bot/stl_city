@@ -415,12 +415,14 @@ function renderInjuries(list) {
 // ── STANDINGS ──
 async function loadStandings() {
   try {
-    const data = await getJSON(`${SITE}/standings`);
-    const groups = data.standings || [];
-    const west = groups.find(g => /west/i.test(g.name || g.abbreviation || '')) || groups[0];
-    if (!west) { $('standings').innerHTML = '<div class="empty">No standings.</div>'; return; }
-    const entries = west.standings && west.standings.entries ? west.standings.entries : (west.entries || []);
-    if (!entries.length) { $('standings').innerHTML = '<div class="empty">No standings data.</div>'; return; }
+    // Use the correct MLS standings endpoint
+    const data = await getJSON(`https://site.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026`);
+    const groups = data.children || data.standings || [];
+    const allGroups = Array.isArray(groups) ? groups : [groups];
+    const west = allGroups.find(g => g && /west/i.test(g.name || g.abbreviation || g.header || '')) || allGroups[0];
+    if (!west) { $('standings').innerHTML = '<div class="empty">Standings loading — MLS resumes July 16.</div>'; return; }
+    const entries = (west.standings && west.standings.entries) || west.entries || [];
+    if (!entries.length) { $('standings').innerHTML = '<div class="empty">Standings loading — MLS resumes July 16.</div>'; return; }
 
     $('standings').innerHTML = entries.slice(0,10).map((e,i) => {
       const t = e.team || {};
@@ -480,7 +482,7 @@ async function runAIQuery(question) {
     // Build context from live ESPN data
     const [schedData, standData] = await Promise.allSettled([
       getJSON(`${SITE}/teams/${TEAM_ID}/schedule`),
-      getJSON(`${SITE}/standings`)
+      getJSON(`https://site.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026`)
     ]);
 
     let context = `St. Louis City SC 2026 MLS Season\n\n`;
@@ -510,8 +512,8 @@ async function runAIQuery(question) {
     }
 
     if (standData.status === 'fulfilled') {
-      const groups = standData.value.standings || [];
-      const west = groups.find(g=>/west/i.test(g.name||''))||groups[0];
+      const groups = standData.value.children || standData.value.standings || [];
+      const west = groups.find(g=>/west/i.test(g.name||g.header||''))||groups[0];
       if (west) {
         const entries = (west.standings&&west.standings.entries)||(west.entries)||[];
         context += `\nWESTERN CONFERENCE STANDINGS:\n`;
