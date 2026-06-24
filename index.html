@@ -318,8 +318,8 @@ async function loadSchedule() {
 
     if (completed) {
       $('heroLbl').textContent = 'Last Match';
-      const usScore = us.score || '0';
-      const themScore = them.score || '0';
+      const usScore = typeof us.score === 'object' ? (us.score && us.score.displayValue || us.score && us.score.value || '0') : (us.score || '0');
+      const themScore = typeof them.score === 'object' ? (them.score && them.score.displayValue || them.score && them.score.value || '0') : (them.score || '0');
       $('gameVs').innerHTML = (home ? 'vs ' : '@ ') + `<span class="opp">${opp}</span>`;
       $('gameMeta').textContent = `Final: ${usScore} – ${themScore}`;
       $('record').textContent = data.team && data.team.record ? data.team.record.items[0].summary : '';
@@ -350,7 +350,9 @@ function renderFixtures(events) {
     const completed = comp.status && comp.status.type && comp.status.type.completed;
     const isNext = !completed && new Date(ev.date).getTime() > now - 2*3600*1000;
     const dateStr = new Date(ev.date).toLocaleDateString(undefined, {month:'short', day:'numeric'});
-    const score = completed ? `${us.score||0}–${them.score||0}` : new Date(ev.date).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    const usS = typeof us.score==='object'?(us.score&&us.score.displayValue||us.score&&us.score.value||'0'):(us.score||'0');
+    const themS = typeof them.score==='object'?(them.score&&them.score.displayValue||them.score&&them.score.value||'0'):(them.score||'0');
+    const score = completed ? `${usS}–${themS}` : new Date(ev.date).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
 
     html += `<div class="fix-row ${completed?'done':''} ${isNext&&!completed?'next':''}">
       <span class="fix-date">${dateStr}</span>
@@ -374,7 +376,7 @@ function tickCountdown() {
 async function loadSquad() {
   try {
     const data = await getJSON(`${SITE}/teams/${TEAM_ID}/roster`);
-    const groups = data.athletes || [];
+    const groups = data.athletes || data.roster || [];
     let html = '', total = 0;
     const injuries = [];
     const posLabels = {goalkeeper:'Goalkeepers',defender:'Defenders',midfielder:'Midfielders',forward:'Forwards'};
@@ -416,7 +418,7 @@ function renderInjuries(list) {
 async function loadStandings() {
   try {
     // Use the correct MLS standings endpoint
-    const data = await getJSON(`https://site.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026`);
+    const data = await getJSON(`https://site.web.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026&type=0&level=1`);
     const groups = data.children || data.standings || [];
     const allGroups = Array.isArray(groups) ? groups : [groups];
     const west = allGroups.find(g => g && /west/i.test(g.name || g.abbreviation || g.header || '')) || allGroups[0];
@@ -482,7 +484,7 @@ async function runAIQuery(question) {
     // Build context from live ESPN data
     const [schedData, standData] = await Promise.allSettled([
       getJSON(`${SITE}/teams/${TEAM_ID}/schedule`),
-      getJSON(`https://site.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026`)
+      getJSON(`https://site.web.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026&type=0&level=1`)
     ]);
 
     let context = `St. Louis City SC 2026 MLS Season\n\n`;
