@@ -287,7 +287,8 @@
 
 <script>
 const LEAGUE = 'usa.1';
-const TEAM_ID = 'stl';
+const TEAM_ID = '21812';
+const TEAM_ABB = 'STL';
 const TEAM_NAME = 'St. Louis City';
 const SITE = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LEAGUE}`;
 const $ = id => document.getElementById(id);
@@ -309,8 +310,8 @@ async function loadSchedule() {
     nextMatchDate = new Date(next.date);
     const comp = (next.competitions && next.competitions[0]) || {};
     const cs = comp.competitors || [];
-    const us = cs.find(c => (c.team&&c.team.abbreviation||'').toLowerCase() === TEAM_ID) || {};
-    const them = cs.find(c => (c.team&&c.team.abbreviation||'').toLowerCase() !== TEAM_ID) || {};
+    const us = cs.find(c => (String(c.team&&c.team.id||'')=== TEAM_ID || (c.team&&c.team.abbreviation||'').toUpperCase()==='STL')) || {};
+    const them = cs.find(c => (String(c.team&&c.team.id||'')!== TEAM_ID && (c.team&&c.team.abbreviation||'').toUpperCase()!=='STL')) || {};
     const home = us.homeAway === 'home';
     const opp = (them.team && (them.team.shortDisplayName || them.team.displayName)) || 'Opponent';
     const completed = comp.status && comp.status.type && comp.status.type.completed;
@@ -342,8 +343,8 @@ function renderFixtures(events) {
   events.slice(-5).concat(events.filter(e => new Date(e.date).getTime() > now).slice(0,8)).forEach(ev => {
     const comp = (ev.competitions && ev.competitions[0]) || {};
     const cs = comp.competitors || [];
-    const us = cs.find(c => (c.team&&c.team.abbreviation||'').toLowerCase() === TEAM_ID) || {};
-    const them = cs.find(c => (c.team&&c.team.abbreviation||'').toLowerCase() !== TEAM_ID) || {};
+    const us = cs.find(c => (String(c.team&&c.team.id||'')=== TEAM_ID || (c.team&&c.team.abbreviation||'').toUpperCase()==='STL')) || {};
+    const them = cs.find(c => (String(c.team&&c.team.id||'')!== TEAM_ID && (c.team&&c.team.abbreviation||'').toUpperCase()!=='STL')) || {};
     const opp = (them.team && (them.team.shortDisplayName || them.team.displayName)) || '—';
     const home = us.homeAway === 'home';
     const completed = comp.status && comp.status.type && comp.status.type.completed;
@@ -492,8 +493,8 @@ async function runAIQuery(question) {
       completed.slice(-5).forEach(ev => {
         const comp = ev.competitions[0];
         const cs = comp.competitors || [];
-        const us = cs.find(c=>(c.team&&c.team.abbreviation||'').toLowerCase()===TEAM_ID)||{};
-        const them = cs.find(c=>(c.team&&c.team.abbreviation||'').toLowerCase()!==TEAM_ID)||{};
+        const us = cs.find(c=>(String(c.team&&c.team.id||'')===TEAM_ID || (c.team&&c.team.abbreviation||'').toUpperCase()==='STL'))||{};
+        const them = cs.find(c=>(String(c.team&&c.team.id||'')!==TEAM_ID && (c.team&&c.team.abbreviation||'').toUpperCase()!=='STL'))||{};
         const opp = (them.team&&them.team.shortDisplayName)||'Opponent';
         const home = us.homeAway==='home';
         context += `${home?'vs':'@'} ${opp}: ${us.score||0}-${them.score||0}\n`;
@@ -502,7 +503,7 @@ async function runAIQuery(question) {
         const next = upcoming[0];
         const comp = next.competitions && next.competitions[0];
         const cs = comp && comp.competitors || [];
-        const them = cs.find(c=>(c.team&&c.team.abbreviation||'').toLowerCase()!==TEAM_ID)||{};
+        const them = cs.find(c=>(String(c.team&&c.team.id||'')!==TEAM_ID && (c.team&&c.team.abbreviation||'').toUpperCase()!=='STL'))||{};
         const opp = (them.team&&them.team.shortDisplayName)||'TBD';
         context += `\nNEXT MATCH: ${new Date(next.date).toLocaleDateString()} vs/@ ${opp}\n`;
       }
@@ -523,7 +524,7 @@ async function runAIQuery(question) {
           const w = gs('wins')||gs('W');
           const l = gs('losses')||gs('L');
           const d = gs('ties')||gs('T')||gs('D');
-          const isMe = name.toLowerCase().includes('city')||(t.abbreviation||'').toLowerCase()===TEAM_ID;
+          const isMe = name.toLowerCase().includes('st. louis')||name.toLowerCase().includes('city sc')||(t.id||'')==='21812';
           context += `${i+1}. ${name}${isMe?' (US)':''}: ${w}W-${l}L-${d}D, ${pts}pts\n`;
         });
       }
