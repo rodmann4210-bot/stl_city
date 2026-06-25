@@ -291,6 +291,7 @@ const TEAM_ID = '21812';
 const TEAM_ABB = 'STL';
 const TEAM_NAME = 'St. Louis City';
 const SITE = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LEAGUE}`;
+const SITE_WEB = `https://site.web.api.espn.com/apis/site/v2/sports/soccer`;
 const $ = id => document.getElementById(id);
 let nextMatchDate = null;
 
@@ -300,7 +301,7 @@ function relTime(d) { const s=(Date.now()-new Date(d).getTime())/1000; if(s<3600
 // ── SCHEDULE / HERO ──
 async function loadSchedule() {
   try {
-    const data = await getJSON(`${SITE}/teams/${TEAM_ID}/schedule`);
+    const data = await getJSON(`${SITE_WEB}/all/teams/${TEAM_ID}/schedule?fixture=true`);
     const events = (data.events || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
     const now = Date.now();
     // Prefer upcoming match; fall back to most recent completed
@@ -379,8 +380,8 @@ async function loadSquad() {
   try {
     // Try squad endpoint first, then roster
     let data;
-    try { data = await getJSON(`${SITE}/teams/${TEAM_ID}/roster`); }
-    catch(e) { data = await getJSON(`${SITE}/teams/${TEAM_ID}/squad`); }
+    try { data = await getJSON(`${SITE_WEB}/${LEAGUE}/teams/${TEAM_ID}/roster`); }
+    catch(e) { data = await getJSON(`${SITE_WEB}/${LEAGUE}/teams/${TEAM_ID}/squad`); }
     // ESPN soccer can return athletes as flat array or grouped
     let rawGroups = data.athletes || data.roster || data.squad || [];
     // If athletes is a flat array of players (not groups), wrap it
@@ -479,7 +480,7 @@ async function runAIQuery(question) {
   footerEl.textContent = ''; btn.disabled = true;
   try {
     const [schedData, standData] = await Promise.allSettled([
-      getJSON(`${SITE}/teams/${TEAM_ID}/schedule`),
+      getJSON(`${SITE_WEB}/all/teams/${TEAM_ID}/schedule?fixture=true`),
       getJSON(`https://site.web.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026&type=0&level=1`)
     ]);
     let context = `St. Louis City SC 2026 MLS Season
