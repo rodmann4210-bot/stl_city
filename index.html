@@ -299,71 +299,109 @@ async function getJSON(u) { const r = await fetch(u, {cache:'no-store'}); if (!r
 function relTime(d) { const s=(Date.now()-new Date(d).getTime())/1000; if(s<3600)return Math.max(1,Math.floor(s/60))+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
 
 // ── SCHEDULE / HERO ──
-async function loadSchedule() {
-  try {
-    const data = await getJSON(`${SITE_WEB}/all/teams/${TEAM_ID}/schedule?fixture=true`);
-    const events = (data.events || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
-    const now = Date.now();
-    // Prefer upcoming match; fall back to most recent completed
-    const upcoming = events.filter(e => new Date(e.date).getTime() > now);
-    const completed = events.filter(e => { const c=(e.competitions&&e.competitions[0])||{}; return c.status&&c.status.type&&c.status.type.completed; });
-    let next = upcoming.length ? upcoming[0] : (completed.length ? completed[completed.length-1] : null);
-    if (!next) { $('gameVs').textContent = 'Schedule TBD'; return; }
+function getScore(v) { if(v===null||v===undefined)return'0'; if(typeof v==='string')return v; if(typeof v==='number')return String(v); if(typeof v==='object')return v.displayValue||v.value||'0'; return'0'; }
+function findUs(cs){ return cs.find(c=>String(c.team&&c.team.id||'')===TEAM_ID)||{}; }
+function findThem(cs){ return cs.find(c=>String(c.team&&c.team.id||'')!==TEAM_ID)||{}; }
 
-    nextMatchDate = new Date(next.date);
-    const comp = (next.competitions && next.competitions[0]) || {};
-    const cs = comp.competitors || [];
-    const us = cs.find(c => (String(c.team&&c.team.id||'')=== TEAM_ID || (c.team&&c.team.abbreviation||'').toUpperCase()==='STL')) || {};
-    const them = cs.find(c => (String(c.team&&c.team.id||'')!== TEAM_ID && (c.team&&c.team.abbreviation||'').toUpperCase()!=='STL')) || {};
-    const home = us.homeAway === 'home';
-    const opp = (them.team && (them.team.shortDisplayName || them.team.displayName)) || 'Opponent';
-    const completed = comp.status && comp.status.type && comp.status.type.completed;
+// Known City SC game dates for 2026 season (from ESPN fixtures page)
+const CITY_DATES = [
+  '20260221','20260301','20260308','20260315','20260322','20260329',
+  '20260404','20260411','20260418','20260425','20260503','20260509',
+  '20260513','20260516','20260523','20260716','20260722','20260725',
+  '20260801','20260815','20260819','20260822','20260830','20260905',
+  '20260909','20260912','20260916','20260919','20260926',
+  '20261011','20261014','20261017','20261024','20261028',
+  '20261101','20261107'
+];
 
-    if (completed) {
-      $('heroLbl').textContent = 'Last Match';
-      const usScore = typeof us.score === 'object' ? (us.score && us.score.displayValue || us.score && us.score.value || '0') : (us.score || '0');
-      const themScore = typeof them.score === 'object' ? (them.score && them.score.displayValue || them.score && them.score.value || '0') : (them.score || '0');
-      $('gameVs').innerHTML = (home ? 'vs ' : '@ ') + `<span class="opp">${opp}</span>`;
-      $('gameMeta').textContent = `Final: ${usScore} – ${themScore}`;
-      $('record').textContent = data.team && data.team.record ? data.team.record.items[0].summary : '';
-    } else {
-      $('heroLbl').textContent = 'Next Match';
-      $('gameVs').innerHTML = (home ? 'vs ' : '@ ') + `<span class="opp">${opp}</span>`;
-      $('gameWhen').textContent = nextMatchDate.toLocaleDateString(undefined, {weekday:'long',month:'long',day:'numeric'});
-      const venue = comp.venue && comp.venue.fullName ? ' · ' + comp.venue.fullName : '';
-      $('gameMeta').textContent = nextMatchDate.toLocaleTimeString(undefined, {hour:'numeric',minute:'2-digit'}) + venue;
-    }
-
-    // Build fixtures list
-    renderFixtures(events);
-  } catch(e) { $('gameVs').textContent = 'Schedule unavailable'; }
+async function fetchCityGames() {
+  // Fetch past dates (last 6) + next upcoming date
+  const now = new Date();
+  const today = now.toISOString().slice(0,10).replace(/-/g,'');
+  const past = CITY_DATES.filter(d=>d<=today).slice(-6);
+  const future = CITY_DATES.filter(d=>d>today).slice(0,3);
+  const toFetch = [...new Set([...past,...future])];
+  
+  const results = await Promise.allSettled(
+    toFetch.map(d=>getJSON(`${SITE}/scoreboard?dates=${d}`))
+  );
+  
+  const games = [];
+  results.forEach((r,i)=>{
+    if(r.status!=='fulfilled')return;
+    const events = r.value.events||[];
+    events.forEach(ev=>{
+      const comp=(ev.competitions&&ev.competitions[0])||{};
+      const cs=comp.competitors||[];
+      if(cs.some(c=>String(c.team&&c.team.id||'')===TEAM_ID)){
+        games.push({ev, comp, cs, date:new Date(ev.date)});
+      }
+    });
+  });
+  games.sort((a,b)=>a.date-b.date);
+  return games;
 }
 
-function renderFixtures(events) {
-  if (!events.length) { $('fixtures').innerHTML = '<div class="empty">No fixtures.</div>'; return; }
-  const now = Date.now();
-  let html = '';
-  events.slice(-5).concat(events.filter(e => new Date(e.date).getTime() > now).slice(0,8)).forEach(ev => {
-    const comp = (ev.competitions && ev.competitions[0]) || {};
-    const cs = comp.competitors || [];
-    const us = cs.find(c => (String(c.team&&c.team.id||'')=== TEAM_ID || (c.team&&c.team.abbreviation||'').toUpperCase()==='STL')) || {};
-    const them = cs.find(c => (String(c.team&&c.team.id||'')!== TEAM_ID && (c.team&&c.team.abbreviation||'').toUpperCase()!=='STL')) || {};
-    const opp = (them.team && (them.team.shortDisplayName || them.team.displayName)) || '—';
-    const home = us.homeAway === 'home';
-    const completed = comp.status && comp.status.type && comp.status.type.completed;
-    const isNext = !completed && new Date(ev.date).getTime() > now - 2*3600*1000;
-    const dateStr = new Date(ev.date).toLocaleDateString(undefined, {month:'short', day:'numeric'});
-    const usS = typeof us.score==='object'?(us.score&&us.score.displayValue||us.score&&us.score.value||'0'):(us.score||'0');
-    const themS = typeof them.score==='object'?(them.score&&them.score.displayValue||them.score&&them.score.value||'0'):(them.score||'0');
-    const score = completed ? `${usS}–${themS}` : new Date(ev.date).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+async function loadSchedule() {
+  try {
+    const games = await fetchCityGames();
+    if(!games.length){$('gameVs').textContent='Schedule TBD';return;}
+    
+    const now = Date.now();
+    const upcoming = games.filter(g=>!g.comp.status?.type?.completed);
+    const completed = games.filter(g=>g.comp.status?.type?.completed);
+    const hero = upcoming.length ? upcoming[0] : completed[completed.length-1];
+    
+    if(hero){
+      const {ev,comp,cs} = hero;
+      const us=findUs(cs), them=findThem(cs);
+      const home=us.homeAway==='home';
+      const opp=(them.team&&(them.team.shortDisplayName||them.team.displayName))||'Opponent';
+      const isDone=comp.status?.type?.completed;
+      nextMatchDate = new Date(ev.date);
+      
+      if(isDone){
+        $('heroLbl').textContent='Last Match';
+        $('gameVs').innerHTML=(home?'vs ':'@ ')+`<span class="opp">${opp}</span>`;
+        $('gameMeta').textContent=`Final: ${getScore(us.score)} – ${getScore(them.score)}`;
+        const rec=us.records&&us.records[0]?us.records[0].summary:'';
+        $('record').textContent=rec;
+        nextMatchDate=null; // Don't show countdown for past game
+      } else {
+        $('heroLbl').textContent='Next Match';
+        $('gameVs').innerHTML=(home?'vs ':'@ ')+`<span class="opp">${opp}</span>`;
+        $('gameWhen').textContent=nextMatchDate.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+        const venue=comp.venue&&comp.venue.fullName?' · '+comp.venue.fullName:'';
+        $('gameMeta').textContent=nextMatchDate.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})+venue;
+      }
+    }
+    renderFixtures(games);
+  } catch(e){$('gameVs').textContent='Schedule unavailable';console.error(e);}
+}
 
-    html += `<div class="fix-row ${completed?'done':''} ${isNext&&!completed?'next':''}">
+function renderFixtures(games) {
+  if(!games.length){$('fixtures').innerHTML='<div class="empty">No fixtures.</div>';return;}
+  const now=Date.now();
+  const completed=games.filter(g=>g.comp.status?.type?.completed);
+  const upcoming=games.filter(g=>!g.comp.status?.type?.completed);
+  const toShow=[...completed.slice(-5),...upcoming.slice(0,8)];
+  let html='';
+  toShow.forEach((g,i)=>{
+    const{ev,comp,cs}=g;
+    const us=findUs(cs),them=findThem(cs);
+    const opp=(them.team&&(them.team.shortDisplayName||them.team.displayName))||'—';
+    const home=us.homeAway==='home';
+    const isDone=comp.status?.type?.completed;
+    const isNext=!isDone&&i===completed.slice(-5).length;
+    const dateStr=new Date(ev.date).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+    const score=isDone?`${getScore(us.score)}–${getScore(them.score)}`:new Date(ev.date).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    html+=`<div class="fix-row ${isDone?'done':''} ${isNext?'next':''}">
       <span class="fix-date">${dateStr}</span>
-      <span class="fix-teams">${home ? 'vs' : '@'} ${opp}</span>
+      <span class="fix-teams">${home?'vs':'@'} ${opp}</span>
       <span class="fix-score">${score}</span>
     </div>`;
   });
-  $('fixtures').innerHTML = html || '<div class="empty">No fixtures available.</div>';
+  $('fixtures').innerHTML=html||'<div class="empty">No fixtures available.</div>';
 }
 
 function tickCountdown() {
@@ -380,8 +418,8 @@ async function loadSquad() {
   try {
     // Try squad endpoint first, then roster
     let data;
-    try { data = await getJSON(`${SITE_WEB}/${LEAGUE}/teams/${TEAM_ID}/roster`); }
-    catch(e) { data = await getJSON(`${SITE_WEB}/${LEAGUE}/teams/${TEAM_ID}/squad`); }
+    try { data = await getJSON(`${SITE}/teams/${TEAM_ID}/roster`); }
+    catch(e) { data = await getJSON(`${SITE}/teams/${TEAM_ID}/squad`); }
     // ESPN soccer can return athletes as flat array or grouped
     let rawGroups = data.athletes || data.roster || data.squad || [];
     // If athletes is a flat array of players (not groups), wrap it
@@ -480,7 +518,7 @@ async function runAIQuery(question) {
   footerEl.textContent = ''; btn.disabled = true;
   try {
     const [schedData, standData] = await Promise.allSettled([
-      getJSON(`${SITE_WEB}/all/teams/${TEAM_ID}/schedule?fixture=true`),
+      getJSON(`${SITE}/teams/${TEAM_ID}/schedule`),
       getJSON(`https://site.web.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026&type=0&level=1`)
     ]);
     let context = `St. Louis City SC 2026 MLS Season
