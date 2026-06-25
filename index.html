@@ -291,7 +291,6 @@ const TEAM_ID = '21812';
 const TEAM_ABB = 'STL';
 const TEAM_NAME = 'St. Louis City';
 const SITE = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LEAGUE}`;
-const SITE_WEB = `https://site.web.api.espn.com/apis/site/v2/sports/soccer`;
 const $ = id => document.getElementById(id);
 let nextMatchDate = null;
 
@@ -348,8 +347,8 @@ async function loadSchedule() {
     if(!games.length){$('gameVs').textContent='Schedule TBD';return;}
     
     const now = Date.now();
-    const upcoming = games.filter(g=>!g.comp.status?.type?.completed);
-    const completed = games.filter(g=>g.comp.status?.type?.completed);
+    const upcoming = games.filter(g=>!g.comp.status&&comp.status.type&&comp.status.type.completed);
+    const completed = games.filter(g=>g.comp.status&&comp.status.type&&comp.status.type.completed);
     const hero = upcoming.length ? upcoming[0] : completed[completed.length-1];
     
     if(hero){
@@ -357,7 +356,7 @@ async function loadSchedule() {
       const us=findUs(cs), them=findThem(cs);
       const home=us.homeAway==='home';
       const opp=(them.team&&(them.team.shortDisplayName||them.team.displayName))||'Opponent';
-      const isDone=comp.status?.type?.completed;
+      const isDone=comp.status&&comp.status.type&&comp.status.type.completed;
       nextMatchDate = new Date(ev.date);
       
       if(isDone){
@@ -376,14 +375,14 @@ async function loadSchedule() {
       }
     }
     renderFixtures(games);
-  } catch(e){$('gameVs').textContent='Schedule unavailable';console.error(e);}
+  } catch(e){$('gameVs').textContent='Error: '+e.message;console.error(e);}
 }
 
 function renderFixtures(games) {
   if(!games.length){$('fixtures').innerHTML='<div class="empty">No fixtures.</div>';return;}
   const now=Date.now();
-  const completed=games.filter(g=>g.comp.status?.type?.completed);
-  const upcoming=games.filter(g=>!g.comp.status?.type?.completed);
+  const completed=games.filter(g=>g.comp.status&&comp.status.type&&comp.status.type.completed);
+  const upcoming=games.filter(g=>!g.comp.status&&comp.status.type&&comp.status.type.completed);
   const toShow=[...completed.slice(-5),...upcoming.slice(0,8)];
   let html='';
   toShow.forEach((g,i)=>{
@@ -391,7 +390,7 @@ function renderFixtures(games) {
     const us=findUs(cs),them=findThem(cs);
     const opp=(them.team&&(them.team.shortDisplayName||them.team.displayName))||'—';
     const home=us.homeAway==='home';
-    const isDone=comp.status?.type?.completed;
+    const isDone=comp.status&&comp.status.type&&comp.status.type.completed;
     const isNext=!isDone&&i===completed.slice(-5).length;
     const dateStr=new Date(ev.date).toLocaleDateString(undefined,{month:'short',day:'numeric'});
     const score=isDone?`${getScore(us.score)}–${getScore(them.score)}`:new Date(ev.date).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
