@@ -562,8 +562,7 @@ WESTERN CONFERENCE STANDINGS:
     const result = await response.json();
     if (result.error) { answerEl.innerHTML=`<span style="color:var(--red)">API error: ${result.error.message}</span>`; return; }
     const text = (result.content&&result.content[0]&&result.content[0].text)||'No response.';
-    answerEl.innerHTML = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/
-/g,'<br>');
+    answerEl.innerHTML = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
     footerEl.textContent = 'Powered by Claude · Based on ESPN live data';
   } catch(e) { answerEl.innerHTML=`<span style="color:var(--red)">Could not reach the AI.</span>`; }
   finally { btn.disabled = false; }
