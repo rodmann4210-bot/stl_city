@@ -347,8 +347,8 @@ async function loadSchedule() {
     if(!games.length){$('gameVs').textContent='Schedule TBD';return;}
     
     const now = Date.now();
-    const upcoming = games.filter(g=>!g.comp.status&&comp.status.type&&comp.status.type.completed);
-    const completed = games.filter(g=>g.comp.status&&comp.status.type&&comp.status.type.completed);
+    const upcoming = games.filter(g=>!(g.comp.status&&g.comp.status.type&&g.comp.status.type.completed));
+    const completed = games.filter(g=>g.comp.status&&g.comp.status.type&&g.comp.status.type.completed);
     const hero = upcoming.length ? upcoming[0] : completed[completed.length-1];
     
     if(hero){
@@ -381,8 +381,8 @@ async function loadSchedule() {
 function renderFixtures(games) {
   if(!games.length){$('fixtures').innerHTML='<div class="empty">No fixtures.</div>';return;}
   const now=Date.now();
-  const completed=games.filter(g=>g.comp.status&&comp.status.type&&comp.status.type.completed);
-  const upcoming=games.filter(g=>!g.comp.status&&comp.status.type&&comp.status.type.completed);
+  const completed=games.filter(g=>g.comp.status&&g.comp.status.type&&g.comp.status.type.completed);
+  const upcoming=games.filter(g=>!(g.comp.status&&g.comp.status.type&&g.comp.status.type.completed));
   const toShow=[...completed.slice(-5),...upcoming.slice(0,8)];
   let html='';
   toShow.forEach((g,i)=>{
