@@ -427,59 +427,29 @@ function renderInjuries(list) {
 async function loadStandings() {
   try {
     const data = await getJSON(`https://site.web.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026&type=0&level=1`);
-    // Try multiple paths to find standings entries
     let entries = [];
-    const groups = data.children || data.standings || [];
-    const allGroups = Array.isArray(groups) ? groups : [groups];
-    const west = allGroups.find(g => g && /west/i.test(g.name || g.abbreviation || g.header || '')) || allGroups[0];
-    if (west) {
-      entries = (west.standings && west.standings.entries) || west.entries || 
-                (west.children && west.children[0] && west.children[0].standings && west.children[0].standings.entries) || [];
-    }
-    if (!entries.length) {
-      // Fallback: try the scoreboard which has team records
-      const sb = await getJSON(`${SITE}/scoreboard`);
-      const teams = (sb.leagues && sb.leagues[0] && sb.leagues[0].teams) || [];
-      if (teams.length) {
-        $('standings').innerHTML = teams.slice(0,10).map((t,i) => {
-          const team = t.team || t;
-          const logo = team.logos && team.logos[0] ? team.logos[0].href : '';
-          const name = team.shortDisplayName || team.displayName || '—';
-          const rec = team.record && team.record.items && team.record.items[0] ? team.record.items[0].summary : '—';
-          const isMe = String(team.id||'') === TEAM_ID;
-          return `<div class="row conf ${isMe?'me':''}">
-            <div class="tinfo"><span class="rank">${i+1}</span>${logo?`<img src="${logo}" alt="">`:''}<span class="tn">${name}</span></div>
-            <div class="rstats"><span class="rec">${rec}</span></div>
-          </div>`;
-        }).join('');
-        return;
-      }
-      $('standings').innerHTML = '<div class="empty">Standings resume July 16.</div>'; return;
-    }
-
-    $('standings').innerHTML = entries.slice(0,10).map((e,i) => {
+    const search = (obj) => {
+      if (!obj || typeof obj !== 'object') return;
+      if (Array.isArray(obj.entries) && obj.entries.length) { entries = obj.entries; return; }
+      for (const k of Object.keys(obj)) { if (typeof obj[k] === 'object') { search(obj[k]); if (entries.length) return; } }
+    };
+    search(data);
+    if (!entries.length) { $('standings').innerHTML = '<div class="empty">Standings resume July 16.</div>'; return; }
+    $('standings').innerHTML = entries.slice(0,12).map((e,i) => {
       const t = e.team || {};
       const logo = t.logos && t.logos[0] ? t.logos[0].href : '';
       const name = t.shortDisplayName || t.displayName || '—';
-      const isMe = (t.abbreviation||'').toLowerCase() === TEAM_ID || name.toLowerCase().includes('city');
+      const isMe = String(t.id||'') === TEAM_ID || name.toLowerCase().includes('st. louis');
       const stats = e.stats || [];
-      const gs = n => (stats.find(s=>s.name===n||s.abbreviation===n)||{}).displayValue || '—';
-      const pts = gs('points') || gs('pts') || gs('PTS');
-      const rec = `${gs('wins')||gs('W')||'0'}-${gs('losses')||gs('L')||'0'}-${gs('ties')||gs('T')||gs('D')||'0'}`;
-
+      const gs = n => (stats.find(s=>s.name===n||s.abbreviation===n)||{}).displayValue||'—';
+      const pts = gs('points')||gs('pts')||gs('PTS');
+      const w = gs('wins')||gs('W'); const l = gs('losses')||gs('L'); const d = gs('ties')||gs('T')||gs('D');
       return `<div class="row conf ${isMe?'me':''}">
-        <div class="tinfo">
-          <span class="rank">${i+1}</span>
-          ${logo?`<img src="${logo}" alt="">`:''}
-          <span class="tn">${name}</span>
-        </div>
-        <div class="rstats">
-          <span class="rec">${rec}</span>
-          <span class="pts">${pts}pts</span>
-        </div>
+        <div class="tinfo"><span class="rank">${i+1}</span>${logo?`<img src="${logo}" alt="">`:''}<span class="tn">${name}</span></div>
+        <div class="rstats"><span class="rec">${w}-${l}-${d}</span><span class="pts">${pts}pts</span></div>
       </div>`;
     }).join('');
-  } catch(e) { $('standings').innerHTML = '<div class="err">Standings unavailable.</div>'; }
+  } catch(e) { $('standings').innerHTML = '<div class="empty">Standings resume July 16.</div>'; }
 }
 
 // ── NEWS ──
@@ -503,81 +473,62 @@ async function loadNews() {
 const SPORTS_AI_URL = 'https://sports-ai-phi.vercel.app/api/ask';
 
 async function runAIQuery(question) {
-  const answerEl = $('aiAnswer');
-  const footerEl = $('aiFooter');
-  const btn = $('aiBtn');
+  const answerEl = $('aiAnswer'), footerEl = $('aiFooter'), btn = $('aiBtn');
   answerEl.classList.add('visible');
   answerEl.innerHTML = '<span class="ai-thinking">Analyzing City SC data&hellip;</span>';
-  footerEl.textContent = '';
-  btn.disabled = true;
-
+  footerEl.textContent = ''; btn.disabled = true;
   try {
-    // Build context from live ESPN data
     const [schedData, standData] = await Promise.allSettled([
       getJSON(`${SITE}/teams/${TEAM_ID}/schedule`),
       getJSON(`https://site.web.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026&type=0&level=1`)
     ]);
+    let context = `St. Louis City SC 2026 MLS Season
 
-    let context = `St. Louis City SC 2026 MLS Season\n\n`;
-
+`;
     if (schedData.status === 'fulfilled') {
       const events = (schedData.value.events || []);
-      const completed = events.filter(e => e.competitions && e.competitions[0] && e.competitions[0].status && e.competitions[0].status.type && e.competitions[0].status.type.completed);
+      const done = events.filter(e => { const c=(e.competitions&&e.competitions[0])||{}; return c.status&&c.status.type&&c.status.type.completed; });
       const upcoming = events.filter(e => new Date(e.date).getTime() > Date.now());
-      context += `RESULTS (last 5):\n`;
-      completed.slice(-5).forEach(ev => {
-        const comp = ev.competitions[0];
-        const cs = comp.competitors || [];
-        const us = cs.find(c=>(String(c.team&&c.team.id||'')===TEAM_ID || (c.team&&c.team.abbreviation||'').toUpperCase()==='STL'))||{};
-        const them = cs.find(c=>(String(c.team&&c.team.id||'')!==TEAM_ID && (c.team&&c.team.abbreviation||'').toUpperCase()!=='STL'))||{};
+      context += `RESULTS (last 5):
+`;
+      done.slice(-5).forEach(ev => {
+        const comp = ev.competitions[0]; const cs = comp.competitors||[];
+        const us = findUs(cs); const them = findThem(cs);
         const opp = (them.team&&them.team.shortDisplayName)||'Opponent';
-        const home = us.homeAway==='home';
-        context += `${home?'vs':'@'} ${opp}: ${us.score||0}-${them.score||0}\n`;
+        context += `${us.homeAway==='home'?'vs':'@'} ${opp}: ${getScore(us.score)}-${getScore(them.score)}
+`;
       });
       if (upcoming.length) {
-        const next = upcoming[0];
-        const comp = next.competitions && next.competitions[0];
-        const cs = comp && comp.competitors || [];
-        const them = cs.find(c=>(String(c.team&&c.team.id||'')!==TEAM_ID && (c.team&&c.team.abbreviation||'').toUpperCase()!=='STL'))||{};
-        const opp = (them.team&&them.team.shortDisplayName)||'TBD';
-        context += `\nNEXT MATCH: ${new Date(next.date).toLocaleDateString()} vs/@ ${opp}\n`;
+        const next = upcoming[0]; const comp = next.competitions&&next.competitions[0]; const cs = comp&&comp.competitors||[];
+        const them = findThem(cs); const opp = (them.team&&them.team.shortDisplayName)||'TBD';
+        context += `
+NEXT MATCH: ${new Date(next.date).toLocaleDateString()} vs/@ ${opp}
+`;
       }
     }
-
     if (standData.status === 'fulfilled') {
-      const groups = standData.value.children || standData.value.standings || [];
-      const west = groups.find(g=>/west/i.test(g.name||g.header||''))||groups[0];
-      if (west) {
-        const entries = (west.standings&&west.standings.entries)||(west.entries)||[];
-        context += `\nWESTERN CONFERENCE STANDINGS:\n`;
-        entries.slice(0,10).forEach((e,i) => {
-          const t = e.team||{};
-          const name = t.shortDisplayName||t.displayName||'?';
-          const stats = e.stats||[];
-          const gs = n=>(stats.find(s=>s.name===n||s.abbreviation===n)||{}).displayValue||'0';
-          const pts = gs('points')||gs('pts');
-          const w = gs('wins')||gs('W');
-          const l = gs('losses')||gs('L');
-          const d = gs('ties')||gs('T')||gs('D');
-          const isMe = name.toLowerCase().includes('st. louis')||name.toLowerCase().includes('city sc')||(t.id||'')==='21812';
-          context += `${i+1}. ${name}${isMe?' (US)':''}: ${w}W-${l}L-${d}D, ${pts}pts\n`;
+      let entries = []; const search = (obj) => { if(!obj||typeof obj!=='object')return; if(Array.isArray(obj.entries)&&obj.entries.length){entries=obj.entries;return;} for(const k of Object.keys(obj)){if(typeof obj[k]==='object'){search(obj[k]);if(entries.length)return;}} }; search(standData.value);
+      if (entries.length) {
+        context += `
+WESTERN CONFERENCE STANDINGS:
+`;
+        entries.slice(0,12).forEach((e,i) => {
+          const t=e.team||{}; const name=t.shortDisplayName||t.displayName||'?';
+          const stats=e.stats||[]; const gs=n=>(stats.find(s=>s.name===n||s.abbreviation===n)||{}).displayValue||'0';
+          context += `${i+1}. ${name}: ${gs('wins')||'0'}W-${gs('losses')||'0'}L-${gs('ties')||'0'}D, ${gs('points')||'0'}pts
+`;
         });
       }
     }
-
-    const response = await fetch(SPORTS_AI_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ question, context, sport: 'St. Louis City SC MLS 2026' })
-    });
+    const response = await fetch(SPORTS_AI_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({question, context, sport:'St. Louis City SC MLS 2026'}) });
     const result = await response.json();
-    if (result.error) { answerEl.innerHTML = `<span style="color:var(--red)">API error: ${result.error.message}</span>`; return; }
+    if (result.error) { answerEl.innerHTML=`<span style="color:var(--red)">API error: ${result.error.message}</span>`; return; }
     const text = (result.content&&result.content[0]&&result.content[0].text)||'No response.';
-    answerEl.innerHTML = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    answerEl.innerHTML = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/
+/g,'<br>');
     footerEl.textContent = 'Powered by Claude · Based on ESPN live data';
-  } catch(e) {
-    answerEl.innerHTML = `<span style="color:var(--red)">Could not reach the AI. Check your connection.</span>`;
-  } finally { btn.disabled = false; }
+  } catch(e) { answerEl.innerHTML=`<span style="color:var(--red)">Could not reach the AI.</span>`; }
+  finally { btn.disabled = false; }
 }
 
 $('aiBtn').addEventListener('click', () => { const q=$('aiInput').value.trim(); if(q)runAIQuery(q); });
