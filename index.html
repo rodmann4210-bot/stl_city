@@ -303,8 +303,10 @@ async function loadSchedule() {
     const data = await getJSON(`${SITE}/teams/${TEAM_ID}/schedule`);
     const events = (data.events || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
     const now = Date.now();
-    let next = events.find(e => new Date(e.date).getTime() > now - 2*3600*1000);
-    if (!next && events.length) next = events[events.length-1];
+    // Prefer upcoming match; fall back to most recent completed
+    const upcoming = events.filter(e => new Date(e.date).getTime() > now);
+    const completed = events.filter(e => { const c=(e.competitions&&e.competitions[0])||{}; return c.status&&c.status.type&&c.status.type.completed; });
+    let next = upcoming.length ? upcoming[0] : (completed.length ? completed[completed.length-1] : null);
     if (!next) { $('gameVs').textContent = 'Schedule TBD'; return; }
 
     nextMatchDate = new Date(next.date);
@@ -375,8 +377,15 @@ function tickCountdown() {
 // ── SQUAD ──
 async function loadSquad() {
   try {
-    const data = await getJSON(`${SITE}/teams/${TEAM_ID}/roster`);
-    const groups = data.athletes || data.roster || [];
+    // Try squad endpoint first, then roster
+    let data;
+    try { data = await getJSON(`${SITE}/teams/${TEAM_ID}/roster`); }
+    catch(e) { data = await getJSON(`${SITE}/teams/${TEAM_ID}/squad`); }
+    // ESPN soccer can return athletes as flat array or grouped
+    let rawGroups = data.athletes || data.roster || data.squad || [];
+    // If athletes is a flat array of players (not groups), wrap it
+    const groups = (rawGroups.length && rawGroups[0].items) ? rawGroups :
+      rawGroups.length ? [{position:'players', items: rawGroups}] : [];
     let html = '', total = 0;
     const injuries = [];
     const posLabels = {goalkeeper:'Goalkeepers',defender:'Defenders',midfielder:'Midfielders',forward:'Forwards'};
@@ -417,14 +426,36 @@ function renderInjuries(list) {
 // ── STANDINGS ──
 async function loadStandings() {
   try {
-    // Use the correct MLS standings endpoint
     const data = await getJSON(`https://site.web.api.espn.com/apis/v2/sports/soccer/usa.1/standings?season=2026&type=0&level=1`);
+    // Try multiple paths to find standings entries
+    let entries = [];
     const groups = data.children || data.standings || [];
     const allGroups = Array.isArray(groups) ? groups : [groups];
     const west = allGroups.find(g => g && /west/i.test(g.name || g.abbreviation || g.header || '')) || allGroups[0];
-    if (!west) { $('standings').innerHTML = '<div class="empty">Standings loading — MLS resumes July 16.</div>'; return; }
-    const entries = (west.standings && west.standings.entries) || west.entries || [];
-    if (!entries.length) { $('standings').innerHTML = '<div class="empty">Standings loading — MLS resumes July 16.</div>'; return; }
+    if (west) {
+      entries = (west.standings && west.standings.entries) || west.entries || 
+                (west.children && west.children[0] && west.children[0].standings && west.children[0].standings.entries) || [];
+    }
+    if (!entries.length) {
+      // Fallback: try the scoreboard which has team records
+      const sb = await getJSON(`${SITE}/scoreboard`);
+      const teams = (sb.leagues && sb.leagues[0] && sb.leagues[0].teams) || [];
+      if (teams.length) {
+        $('standings').innerHTML = teams.slice(0,10).map((t,i) => {
+          const team = t.team || t;
+          const logo = team.logos && team.logos[0] ? team.logos[0].href : '';
+          const name = team.shortDisplayName || team.displayName || '—';
+          const rec = team.record && team.record.items && team.record.items[0] ? team.record.items[0].summary : '—';
+          const isMe = String(team.id||'') === TEAM_ID;
+          return `<div class="row conf ${isMe?'me':''}">
+            <div class="tinfo"><span class="rank">${i+1}</span>${logo?`<img src="${logo}" alt="">`:''}<span class="tn">${name}</span></div>
+            <div class="rstats"><span class="rec">${rec}</span></div>
+          </div>`;
+        }).join('');
+        return;
+      }
+      $('standings').innerHTML = '<div class="empty">Standings resume July 16.</div>'; return;
+    }
 
     $('standings').innerHTML = entries.slice(0,10).map((e,i) => {
       const t = e.team || {};
