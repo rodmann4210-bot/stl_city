@@ -352,7 +352,7 @@ async function loadSchedule() {
     const hero = upcoming.length ? upcoming[0] : completed[completed.length-1];
     
     if(hero){
-      const {ev,comp,cs} = hero;
+      const ev=hero.ev, comp=hero.comp, cs=hero.cs;
       const us=findUs(cs), them=findThem(cs);
       const home=us.homeAway==='home';
       const opp=(them.team&&(them.team.shortDisplayName||them.team.displayName))||'Opponent';
